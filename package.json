@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "jest",
-    "prepublish": "tsc"
+    "prepare": "tsc"
   },
   "author": "Kresten Axelsen <krestenma@gmail.com>",
   "license": "ISC",

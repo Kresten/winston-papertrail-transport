@@ -115,11 +115,6 @@ export class PapertrailTransport extends Transport {
 
     const { level, message, meta } = info;
 
-    // bitwise not evaluating everything but -1 to true, so !~-1 === true
-    if (!this.options.levels[level]) {
-      return callback(new Error('Cannot log unknown syslog level: ' + level));
-    }
-
     let output = message;
 
     if (meta) {
