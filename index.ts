@@ -83,9 +83,7 @@ export class PapertrailTransport extends Transport {
         alert: 6,
         emerg: 7,
       },
-      logFormat: function(level: string, message: string) {
-        return level + ' ' + message;
-      },
+      logFormat: (level, message) => `${level} ${message}`,
       attemptsBeforeDecay: 5,
       maximumAttempts: 25,
       connectionDelay: 1000,
