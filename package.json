@@ -1,6 +1,6 @@
 {
   "name": "winston-papertrail-transport",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "A Papertrail transport for Winston 3",
   "main": "dist/index.js",
   "scripts": {
@@ -8,6 +8,14 @@
     "prepare": "tsc"
   },
   "author": "Kresten Axelsen <krestenma@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kresten/winston-papertrail-transport.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Kresten/winston-papertrail-transport/issues"
+  },
+  "homepage": "https://github.com/Kresten/winston-papertrail-transport#readme",
   "license": "ISC",
   "dependencies": {
     "glossy": "^0.1.7"
