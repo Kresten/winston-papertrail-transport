@@ -30,14 +30,11 @@ The following options are required for logging to Papertrail:
 The following options are optional
 
 - **disableTls:** Disable TLS on the transport. Defaults to `false`.
-- **level:** The log level to use for this transport. Defaults to `info`.
 - **levels:** A mapping of log level strings to severity levels. Defaults to the mapping of npm levels to RFC5424 severities.
 - **hostname:** The hostname for your transport. Defaults to `os.hostname()`.
 - **program:** The program for your transport. Defaults to `default`.
 - **facility:** The syslog facility for this transport. Defaults to `daemon`.
-- **logFormat:** A function to format your log message before sending. Defaults to `` (level, message) => `${level} ${message}`; ``.
 - **colorize:** Enables ANSI colors in logs. Defaults to `false`.
-- **inlineMeta:** Inline multi-line messages. Defaults to `false`.
 - **handleExceptions:** Make transport handle exceptions. Defaults to `false`.
 - **flushOnClose:** Flush queued logs in close. Defaults to `false`.
 - **depth:** Max depth for objects dumped by NodeJS `util.inspect`. Defaults to `null`, which means no limit.
