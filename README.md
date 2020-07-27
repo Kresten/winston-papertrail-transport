@@ -30,7 +30,9 @@ The following options are required for logging to Papertrail:
 The following options are optional
 
 - **disableTls:** Disable TLS on the transport. Defaults to `false`.
-- **levels:** A mapping of log level strings to severity levels. Defaults to the mapping of npm levels to RFC5424 severities.
+- **levels:** A mapping of log level strings to [RFC5424 severity levels](https://tools.ietf.org/html/rfc5424#section-6.2.1).
+  Defaults to mapping the severity strings and shorthands as supported by Papertrail. If your app is logging with an 
+  unrecognized level, it will default to "notice" (5).
 - **hostname:** The hostname for your transport. Defaults to `os.hostname()`.
 - **program:** The program for your transport. Defaults to `default`.
 - **facility:** The syslog facility for this transport. Defaults to `daemon`.
