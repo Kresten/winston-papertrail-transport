@@ -1,6 +1,6 @@
 {
   "name": "winston-papertrail-transport",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A Papertrail transport for Winston 3",
   "main": "dist/index.js",
   "scripts": {

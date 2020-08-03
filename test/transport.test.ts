@@ -12,16 +12,28 @@ import { LEVEL, MESSAGE } from 'triple-beam';
 const _noop = () => {};
 
 describe('winston-papertrail-transport', () => {
-  describe('invalid', () => {
+  let pc: PapertrailConnection;
+  let pt: PapertrailTransport;
+  afterEach(() => {
+    if (pc) {
+      pc.close();
+      (pc as any) = undefined;
+    }
+    if (pt) {
+      pt.close();
+      (pt as any) = undefined;
+    }
+  });
+  describe('invalid configurations', () => {
     it('should fail to connect', done => {
-      const pt = new PapertrailConnection({
+      pc = new PapertrailConnection({
         host: 'this.wont.resolve',
         port: 12345,
         attemptsBeforeDecay: 0,
         connectionDelay: 10000,
       });
 
-      pt.on('error', err => {
+      pc.on('error', err => {
         expect(err).toBeDefined();
         done();
       });
@@ -50,39 +62,42 @@ describe('winston-papertrail-transport', () => {
     });
 
     it('should connect', done => {
-      const pt = new PapertrailConnection({
+      pc = new PapertrailConnection({
         host: 'localhost',
         port: 23456,
         attemptsBeforeDecay: 0,
         connectionDelay: 10000,
       });
 
-      pt.on('error', err => {
+      pc.on('error', err => {
         expect(err).not.toBeDefined();
       });
 
-      pt.on('connect', () => {
+      pc.on('connect', () => {
         done();
       });
     });
 
     it('should connect a bunch without exploding', done => {
       let connects = 0;
-      const pts: any = {};
+      const pcs: { [key: string]: PapertrailConnection } = {};
       for (let i = 0; i < 5; i++) {
         const key = 'pt' + i;
-        pts[key] = new PapertrailConnection({
+        pcs[key] = new PapertrailConnection({
           host: 'localhost',
           port: 23456,
           attemptsBeforeDecay: 0,
           connectionDelay: 100,
         });
-        pts[key].on('error', (err: any) => {
+        pcs[key].on('error', (err: any) => {
           expect(err).not.toBeDefined();
         });
-        pts[key].on('connect', () => {
+        pcs[key].on('connect', () => {
           connects++;
           if (connects === 4) {
+            for (const key of Object.keys(pcs)) {
+              pcs[key].close();
+            }
             done();
           }
         });
@@ -90,7 +105,7 @@ describe('winston-papertrail-transport', () => {
     });
 
     it('should send message', done => {
-      const pt = new PapertrailTransport({
+      pt = new PapertrailTransport({
         host: 'localhost',
         port: 23456,
         attemptsBeforeDecay: 0,
@@ -113,7 +128,7 @@ describe('winston-papertrail-transport', () => {
     });
 
     it('should write buffered events before new events', done => {
-      const pt = new PapertrailTransport({
+      pt = new PapertrailTransport({
         host: 'localhost',
         port: 23456,
         attemptsBeforeDecay: 0,
@@ -144,7 +159,7 @@ describe('winston-papertrail-transport', () => {
 
     // TODO need to fix the TLS Server to reject new sockets that are not over tls
     it.skip('should fail to connect without tls', done => {
-      const pt = new PapertrailTransport({
+      pt = new PapertrailTransport({
         host: 'localhost',
         port: 23456,
         attemptsBeforeDecay: 0,
@@ -159,7 +174,7 @@ describe('winston-papertrail-transport', () => {
 
     // connects, then closes, ensure what we wanted was written.
     it('flushOnClose should write buffered events before closing the stream', done => {
-      const pt = new PapertrailTransport({
+      pt = new PapertrailTransport({
         host: 'localhost',
         port: 23456,
         attemptsBeforeDecay: 0,
@@ -217,7 +232,7 @@ describe('winston-papertrail-transport', () => {
     });
 
     it('should connect', done => {
-      const pt = new PapertrailTransport({
+      pt = new PapertrailTransport({
         host: 'localhost',
         port: 23456,
         disableTls: true,
@@ -235,7 +250,7 @@ describe('winston-papertrail-transport', () => {
     });
 
     it('should send message', done => {
-      const pt = new PapertrailTransport({
+      pt = new PapertrailTransport({
         host: 'localhost',
         port: 23456,
         disableTls: true,
@@ -266,7 +281,7 @@ describe('winston-papertrail-transport', () => {
 
     // TODO now it just hangs
     it.skip('should fail to connect via tls', function(done) {
-      const pt = new PapertrailTransport({
+      pt = new PapertrailTransport({
         host: 'localhost',
         port: 23456,
         attemptsBeforeDecay: 0,
