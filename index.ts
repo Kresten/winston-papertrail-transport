@@ -2,6 +2,7 @@ import tls from 'tls';
 import os from 'os';
 import util from 'util';
 import winston from 'winston';
+import { LEVEL, MESSAGE } from 'triple-beam';
 import { Produce } from 'glossy';
 import Transport from 'winston-transport';
 import { EventEmitter } from 'events';
@@ -24,9 +25,7 @@ export interface PapertrailTransportOptions extends Transport.TransportStreamOpt
   program?: string;
   facility?: string;
   levels?: any;
-  logFormat?: (level: string, message: string) => string;
   path?: string;
-  inlineMeta?: boolean;
   colorize?: boolean;
   // max depth for objects
   depth?: any;
@@ -65,25 +64,23 @@ export class PapertrailTransport extends Transport {
     const defaultOptions: PapertrailTransportOptions = {
       host: 'localhost',
       port: 417,
-      inlineMeta: false,
       colorize: false,
       program: 'default',
       facility: 'daemon',
       hostname: os.hostname(),
       depth: null,
       levels: {
-        debug: 0,
-        info: 1,
-        notice: 2,
-        warning: 3,
-        warn: 3,
-        error: 4,
-        err: 4,
-        crit: 5,
-        alert: 6,
-        emerg: 7,
+        debug: 7,
+        info: 6,
+        notice: 5,
+        warning: 4,
+        warn: 4,
+        error: 3,
+        err: 3,
+        crit: 2,
+        alert: 1,
+        emerg: 0,
       },
-      logFormat: (level, message) => `${level} ${message}`,
       attemptsBeforeDecay: 5,
       maximumAttempts: 25,
       connectionDelay: 1000,
@@ -111,30 +108,7 @@ export class PapertrailTransport extends Transport {
       this.emit('logged', info);
     });
 
-    const { level, message, meta } = info;
-
-    let output = message;
-
-    if (meta) {
-      if (typeof meta !== 'object') {
-        output += ' ' + meta;
-      } else if (meta) {
-        if (this.options.inlineMeta) {
-          output +=
-            ' ' +
-            util
-              .inspect(meta, {
-                showHidden: false,
-                depth: this.options.depth,
-                colors: this.options.colorize,
-              })
-              .replace(/[\n\t]\s*/gm, ' ');
-        } else {
-          output += '\n' + util.inspect(meta, false, this.options.depth, this.options.colorize);
-        }
-      }
-    }
-
+    let { [LEVEL]: level, [MESSAGE]: output } = info;
     this.sendMessage(level, output, callback);
   }
 
@@ -162,15 +136,15 @@ export class PapertrailTransport extends Transport {
         gap = '    ';
       }
 
-      // Strip escape characters (for colorization)
-      const cleanedLevel = level.replace(/\u001b\[\d+m/g, '');
+      // Needs a valid severity - default to "notice" if the map failed.
+      const severity = this.options.levels[level] || 5; 
       msg +=
         this.producer.produce({
-          severity: this.options.levels[cleanedLevel] || cleanedLevel,
+          severity,
           host: this.options.hostname,
           appName: this.options.program,
           date: new Date(),
-          message: this.options.logFormat!(level, gap + lines[i]),
+          message,
         }) + '\r\n';
     }
 
