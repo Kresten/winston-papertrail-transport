@@ -3,6 +3,7 @@ import * as tls from 'tls';
 import * as fs from 'fs';
 import * as net from 'net';
 import { Server } from 'net';
+import { LEVEL, MESSAGE } from 'triple-beam';
 
 /**
  * tests from https://github.com/kenperkins/winston-papertrail/blob/v2/test/papertrail-test.js
@@ -101,18 +102,12 @@ describe('winston-papertrail-transport', () => {
       });
 
       pt.connection.on('connect', () => {
-        pt.log(
-          {
-            level: 'info',
-            message: 'hello',
-          },
-          _noop
-        );
+        pt.log({ [LEVEL]: 'info', [MESSAGE]: 'hello' }, _noop);
       });
 
       listener = (data: any) => {
         expect(data).toBeDefined();
-        expect(data.toString().indexOf('default - - - info hello\r\n')).not.toBe(-1);
+        expect(data.toString().indexOf('default - - - hello\r\n')).not.toBe(-1);
         done();
       };
     });
@@ -124,26 +119,14 @@ describe('winston-papertrail-transport', () => {
         attemptsBeforeDecay: 0,
         connectionDelay: 10000,
       });
-      pt.log(
-        {
-          level: 'info',
-          message: 'first',
-        },
-        _noop
-      );
+      pt.log({ [LEVEL]: 'info', [MESSAGE]: 'first' }, _noop);
 
       pt.connection.on('error', err => {
         expect(err).not.toBeDefined();
       });
 
       pt.connection.on('connect', () => {
-        pt.log(
-          {
-            level: 'info',
-            message: 'second',
-          },
-          _noop
-        );
+        pt.log({ [LEVEL]: 'info', [MESSAGE]: 'second' }, _noop);
       });
 
       let gotFirst = false;
@@ -155,130 +138,6 @@ describe('winston-papertrail-transport', () => {
         const lines = data.toString().split('\r\n');
         expect(lines[0]).toMatch('first');
         gotFirst = true;
-        done();
-      };
-    });
-
-    it('should support object meta', done => {
-      const pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
-
-      pt.connection.on('error', err => {
-        expect(err).not.toBeDefined();
-      });
-
-      pt.connection.on('connect', () => {
-        pt.log(
-          {
-            level: 'info',
-            message: 'hello',
-            meta: {
-              foo: 'bar',
-            },
-          },
-          _noop
-        );
-      });
-
-      listener = (data: any) => {
-        expect(data).toBeDefined();
-        expect(data.toString().indexOf('default - - - info hello\r\n')).not.toBe(-1);
-        expect(data.toString().indexOf("{ foo: 'bar' }\r\n")).not.toBe(-1);
-        done();
-      };
-    });
-
-    it('should support array meta', done => {
-      const pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
-
-      pt.connection.on('error', err => {
-        expect(err).not.toBeDefined();
-      });
-
-      pt.connection.on('connect', () => {
-        pt.log(
-          {
-            level: 'info',
-            message: 'hello',
-            meta: ['object'],
-          },
-          _noop
-        );
-      });
-
-      listener = (data: any) => {
-        expect(data).toBeDefined();
-        expect(data.toString().indexOf('default - - - info hello\r\n')).not.toBe(-1);
-        expect(data.toString().indexOf('object')).not.toBe(-1);
-        done();
-      };
-    });
-
-    it('should support null meta', done => {
-      const pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
-
-      pt.connection.on('error', err => {
-        expect(err).not.toBeDefined();
-      });
-
-      pt.connection.on('connect', () => {
-        pt.log(
-          {
-            level: 'info',
-            message: 'hello',
-            meta: null,
-          },
-          _noop
-        );
-      });
-
-      listener = (data: any) => {
-        expect(data).toBeDefined();
-        expect(data.toString().indexOf('default - - - info hello\r\n')).not.toBe(-1);
-        done();
-      };
-    });
-
-    it('should support non-object meta', done => {
-      const pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
-
-      pt.connection.on('error', err => {
-        expect(err).not.toBeDefined();
-      });
-
-      pt.connection.on('connect', () => {
-        pt.log(
-          {
-            level: 'info',
-            message: 'hello',
-            meta: 'meta string',
-          },
-          _noop
-        );
-      });
-
-      listener = (data: any) => {
-        expect(data).toBeDefined();
-        expect(data.toString().indexOf('default - - - info hello meta string\r\n')).not.toBe(-1);
         done();
       };
     });
@@ -309,8 +168,8 @@ describe('winston-papertrail-transport', () => {
 
       pt.log(
         {
-          level: 'info',
-          message: 'buffered',
+          [LEVEL]: 'info',
+          [MESSAGE]: 'buffered',
         },
         _noop
       );
@@ -391,8 +250,8 @@ describe('winston-papertrail-transport', () => {
       pt.connection.on('connect', () => {
         pt.log(
           {
-            level: 'info',
-            message: 'hello',
+            [LEVEL]: 'info',
+            [MESSAGE]: 'hello',
           },
           _noop
         );
@@ -400,7 +259,7 @@ describe('winston-papertrail-transport', () => {
 
       listener = (data: any) => {
         expect(data).toBeDefined();
-        expect(data.toString().indexOf('default - - - info hello\r\n')).not.toEqual(-1);
+        expect(data.toString().indexOf('default - - - hello\r\n')).not.toEqual(-1);
         done();
       };
     });

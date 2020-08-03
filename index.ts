@@ -1,6 +1,5 @@
 import tls from 'tls';
 import os from 'os';
-import util from 'util';
 import winston from 'winston';
 import { LEVEL, MESSAGE } from 'triple-beam';
 import { Produce } from 'glossy';
@@ -108,12 +107,12 @@ export class PapertrailTransport extends Transport {
       this.emit('logged', info);
     });
 
-    let { [LEVEL]: level, [MESSAGE]: output } = info;
+    const { [LEVEL]: level, [MESSAGE]: output } = info;
     this.sendMessage(level, output, callback);
   }
 
   sendMessage(level: any, message: string, callback: any) {
-    let lines = [];
+    let lines;
     let msg = '';
     let gap = '';
 
@@ -137,7 +136,7 @@ export class PapertrailTransport extends Transport {
       }
 
       // Needs a valid severity - default to "notice" if the map failed.
-      const severity = this.options.levels[level] || 5; 
+      const severity = this.options.levels[level] || 5;
       msg +=
         this.producer.produce({
           severity,
