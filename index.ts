@@ -24,17 +24,12 @@ export interface PapertrailTransportOptions extends Transport.TransportStreamOpt
   program?: string;
   facility?: string;
   levels?: any;
-  path?: string;
-  colorize?: boolean;
-  // max depth for objects
-  depth?: any;
   flushOnClose?: boolean;
   // options for connection failure and retry behavior
   attemptsBeforeDecay?: number;
   maximumAttempts?: number;
   connectionDelay?: number;
   maxDelayBetweenReconnection?: number;
-  maxBufferSize?: number;
 }
 
 if (Number(winston.version.split('.')[0]) < 3) {
@@ -45,9 +40,6 @@ export class PapertrailTransport extends Transport {
   private options: PapertrailTransportOptions;
   public connection: PapertrailConnection;
   private producer: any;
-  private connected: boolean;
-  private congested: boolean;
-  private retries: number;
 
   get name() {
     return 'papertrail';
@@ -56,18 +48,12 @@ export class PapertrailTransport extends Transport {
   constructor(options: PapertrailTransportOptions) {
     super(options);
 
-    this.connected = false;
-    this.congested = false;
-    this.retries = 0;
-
     const defaultOptions: PapertrailTransportOptions = {
       host: 'localhost',
       port: 417,
-      colorize: false,
       program: 'default',
       facility: 'daemon',
       hostname: os.hostname(),
-      depth: null,
       levels: {
         debug: 7,
         info: 6,
@@ -85,18 +71,12 @@ export class PapertrailTransport extends Transport {
       connectionDelay: 1000,
       handleExceptions: false,
       maxDelayBetweenReconnection: 60000,
-      // 1 MB
-      maxBufferSize: 1024 * 1024,
-      flushOnClose: false,
+      flushOnClose: true,
       disableTls: false,
     };
 
-    this.connection = new PapertrailConnection(options);
-
-    //
-    // Merge the options for the target Papertrail server.
-    //
     this.options = Object.assign({}, defaultOptions, options);
+    this.connection = new PapertrailConnection(this.options);
     this.producer = new Produce({
       facility: this.options.facility,
     });
@@ -214,10 +194,11 @@ export class PapertrailConnection extends EventEmitter {
             },
             () => this.onConnected()
           );
-          this.stream.once('error', err => this.onErrored(err));
+          this.stream.once('error', err => {
+            this.onErrored(err);
+          });
           this.stream.once('end', () => this.connect());
         });
-
         this.socket.once('error', err => this.onErrored(err));
       }
     } catch (err) {
@@ -226,15 +207,15 @@ export class PapertrailConnection extends EventEmitter {
   }
 
   write(text: string, callback: any) {
-    // If the stream is writable
-    if (this.stream && this.stream.writable) {
-      this.stream.write(text, callback);
+    // If we cannot write at the moment, we add it to the deferred queue for later processing
+    if (this.stream?.writable) {
+      try {
+        this.stream.write(text, callback);
+      } catch (e) {
+        this.deferredQueue.push({ buffer: text, callback });
+      }
     } else {
-      // Otherwise, store it in a buffer and write it when we're connected
-      this.deferredQueue.push({
-        buffer: text,
-        callback,
-      });
+      this.deferredQueue.push({ buffer: text, callback });
     }
   }
 
@@ -242,10 +223,10 @@ export class PapertrailConnection extends EventEmitter {
     if (this.deferredQueue.length === 0 || !this.stream || !this.stream.writable) {
       return;
     }
-    let msg = this.deferredQueue.shift();
+    let msg = this.deferredQueue.pop();
     while (msg) {
       this.stream.write(msg.buffer, msg.callback);
-      msg = this.deferredQueue.shift();
+      msg = this.deferredQueue.pop();
     }
     this.stream.emit('empty');
   }
@@ -293,39 +274,41 @@ export class PapertrailConnection extends EventEmitter {
     }
   }
 
-  close() {
-    const max = 6;
-    let attempt = 0;
-    const closeStream = () => {
-      this.stream!.removeListener('end', this.connect);
-      this.stream!.removeListener('error', this.onErrored);
-      this.stream!.destroy();
+  closeSockets() {
+    if (this.socket) {
+      this.socket.destroy();
+      this.socket = undefined;
+    }
+    if (this.stream) {
+      this.stream.removeAllListeners('end');
+      this.stream.removeAllListeners('error');
+      this.stream.destroy();
       this.stream = undefined;
-    };
+    }
+  }
+
+  close() {
+    // if we encounter errors while closing, we wait and try to close three more times
+    const max = 3;
+    let attempts = 0;
+    this._shutdown = true;
     const _close = () => {
-      if (attempt >= max || this.deferredQueue.length <= 0) {
-        this._shutdown = true;
-        try {
-          if (this.socket) {
-            this.socket.destroy();
-            this.socket = undefined;
+      try {
+        if (this.stream) {
+          if (this.options.flushOnClose && this.deferredQueue.length > 0) {
+            this.stream.on('empty', () => {
+              this.closeSockets();
+            });
+          } else {
+            this.closeSockets();
           }
-          if (this.stream) {
-            if (this.options.flushOnClose && this.deferredQueue.length > 0) {
-              this.stream.on('empty', () => {
-                closeStream();
-              });
-            } else {
-              closeStream();
-            }
-          }
-        } catch (e) {
-          attempt++;
-          setTimeout(_close, 200 * attempt);
         }
-      } else {
-        attempt++;
-        setTimeout(_close, 200 * attempt);
+        this._shutdown = false;
+      } catch (e) {
+        attempts++;
+        if (attempts < max) {
+          setTimeout(_close, 100 + attempts);
+        }
       }
     };
     _close();

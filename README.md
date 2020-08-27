@@ -22,6 +22,22 @@ Heavily inspired by and borrows from [winston-papertrail][1] and [winston-syslog
   $ npm install winston-papertrail-transport
 ```
 
+### Usage
+
+To create the transport, simply import the transport and create an instance
+
+```typescript
+import * as winston from 'winston';
+import { PapertrailTransport } from 'winston-papertrail-transport';
+const papertrailTransport = new PapertrailTransport({
+  host: 'logs.papertrail.com',
+  port: 12345,
+});
+const logger = winston.createLogger({
+  transports: [papertrailTransport],
+});
+```
+
 The following options are required for logging to Papertrail:
 
 - **host:** FQDN or IP Address of the Papertrail Service Endpoint
@@ -36,15 +52,26 @@ The following options are optional
 - **hostname:** The hostname for your transport. Defaults to `os.hostname()`.
 - **program:** The program for your transport. Defaults to `default`.
 - **facility:** The syslog facility for this transport. Defaults to `daemon`.
-- **colorize:** Enables ANSI colors in logs. Defaults to `false`.
 - **handleExceptions:** Make transport handle exceptions. Defaults to `false`.
-- **flushOnClose:** Flush queued logs in close. Defaults to `false`.
-- **depth:** Max depth for objects dumped by NodeJS `util.inspect`. Defaults to `null`, which means no limit.
+- **flushOnClose:** Flush queued logs in close. Defaults to `true`.
 - **attemptsBeforeDecay:** The number of retries attempted before backing off. Defaults to `5`.
 - **maximumAttempts:** The number of retries attempted before buffering is disabled. Defaults to `25`.
 - **connectionDelay:** The number of time between connection retries in ms attempted before buffering is disabled. Defaults to `1000`.
-- **connectionDelay:** The maximum number of time between connection retries in ms allowed. Defaults to `60000`.
-- **connectionDelay:** The maximum size of the retry buffer in bytes. Defaults to `1024 * 1024`.
+- **maxDelayBetweenReconnection:** The maximum number of time between connection retries in ms allowed. Defaults to `60000`.
+
+To close the connection, you can use the `close()` function on the transport, e.g. `papertrailTransport.close()`.
+
+The `PapertrailConnection` class which handles the connection and reconnection to Papertrail can be accessed via the `connection` field on the transport, e.g. `papertrailTransport.connection`.
+`PapertrailConnection` extends `EventEmitter` and allows the user to listen to `connect` and `error` events, e.g.
+
+```typescript
+papertrailTransport.connection.on('error', error => {
+  console.error('Error recieved from PapertrailTransport: ' + error.message);
+});
+papertrailTransport.connection.on('connect', event => {
+  console.log(event);
+});
+```
 
 ## Example usage
 
@@ -69,14 +96,17 @@ function getConfig(program: string) {
   const papertrailTransport = new PapertrailTransport({
     host: 'logs.papertrailapp.com',
     port: 1234,
-    colorize: true,
     hostname: hostname,
     program,
   });
   transports.push(papertrailTransport);
 
   return {
-    format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple(),
+      winston.format.printf(({ level, message }) => `${level} ${message}`)
+    ),
     transports,
   };
 }

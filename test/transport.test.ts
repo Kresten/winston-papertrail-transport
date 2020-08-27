@@ -14,18 +14,24 @@ const _noop = () => {};
 describe('winston-papertrail-transport', () => {
   let pc: PapertrailConnection;
   let pt: PapertrailTransport;
-  afterEach(() => {
-    if (pc) {
-      pc.close();
-      (pc as any) = undefined;
-    }
-    if (pt) {
-      pt.close();
-      (pt as any) = undefined;
-    }
-  });
+
   describe('invalid configurations', () => {
     it('should fail to connect', done => {
+      pc = new PapertrailConnection({
+        host: 'this.wont.resolve',
+        port: 12345,
+        attemptsBeforeDecay: 0,
+        connectionDelay: 1000,
+      });
+
+      pc.on('error', err => {
+        expect(err).toBeDefined();
+        pc.close();
+        done();
+      });
+    });
+
+    it('should not exit process when it fails to connect', function(done) {
       pc = new PapertrailConnection({
         host: 'this.wont.resolve',
         port: 12345,
@@ -35,8 +41,11 @@ describe('winston-papertrail-transport', () => {
 
       pc.on('error', err => {
         expect(err).toBeDefined();
-        done();
       });
+      setTimeout(() => {
+        pc.close();
+        done();
+      }, 30);
     });
   });
 
@@ -45,6 +54,8 @@ describe('winston-papertrail-transport', () => {
     let listener: any = _noop;
 
     beforeAll(done => {
+      pt?.close();
+      pc?.close();
       server = tls.createServer(
         {
           key: fs.readFileSync('./test/server.key'),
