@@ -92,15 +92,12 @@ export class PapertrailTransport extends Transport {
   }
 
   sendMessage(level: any, message: string, callback: any) {
-    let lines;
+    let lines = [''];
     let msg = '';
-    let gap = '';
 
     // Only split if we actually have a message
     if (message) {
       lines = message.split('\n');
-    } else {
-      lines = [''];
     }
 
     // If the incoming message has multiple lines, break them and format each
@@ -111,10 +108,6 @@ export class PapertrailTransport extends Transport {
         break;
       }
 
-      if (i === 1) {
-        gap = '    ';
-      }
-
       // Needs a valid severity - default to "notice" if the map failed.
       const severity = this.options.levels[level] || 5;
       msg +=
@@ -123,7 +116,7 @@ export class PapertrailTransport extends Transport {
           host: this.options.hostname,
           appName: this.options.program,
           date: new Date(),
-          message,
+          message: lines[i],
         }) + '\r\n';
     }
 
