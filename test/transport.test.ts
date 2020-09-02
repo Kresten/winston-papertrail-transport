@@ -116,12 +116,7 @@ describe('winston-papertrail-transport', () => {
     });
 
     it('should send message', done => {
-      pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
+      pt = getTransport();
 
       pt.connection.on('error', err => {
         expect(err).not.toBeDefined();
@@ -138,13 +133,30 @@ describe('winston-papertrail-transport', () => {
       };
     });
 
-    it('should write buffered events before new events', done => {
-      pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
+    it('should send multi line messages', done => {
+      pt = getTransport();
+
+      pt.connection.on('error', err => {
+        expect(err).not.toBeDefined();
       });
+
+      pt.connection.on('connect', () => {
+        pt.log({ [LEVEL]: 'info', [MESSAGE]: 'This\nis\na\ntest' }, _noop);
+      });
+
+      listener = (data: any) => {
+        expect(data).toBeDefined();
+        expect(data.toString().indexOf('default - - - This')).not.toBe(-1);
+        expect(data.toString().indexOf('default - - - is')).not.toBe(-1);
+        expect(data.toString().indexOf('default - - - a')).not.toBe(-1);
+        expect(data.toString().indexOf('default - - - test')).not.toBe(-1);
+        done();
+      };
+    });
+
+    it('should write buffered events before new events', done => {
+      pt = getTransport();
+
       pt.log({ [LEVEL]: 'info', [MESSAGE]: 'first' }, _noop);
 
       pt.connection.on('error', err => {
@@ -170,12 +182,7 @@ describe('winston-papertrail-transport', () => {
 
     // TODO need to fix the TLS Server to reject new sockets that are not over tls
     it.skip('should fail to connect without tls', done => {
-      pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
+      pt = getTransport();
 
       pt.connection.on('error', err => {
         expect(err).toBeDefined();
@@ -185,12 +192,7 @@ describe('winston-papertrail-transport', () => {
 
     // connects, then closes, ensure what we wanted was written.
     it('flushOnClose should write buffered events before closing the stream', done => {
-      pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
+      pt = getTransport();
 
       pt.log(
         {
@@ -243,13 +245,7 @@ describe('winston-papertrail-transport', () => {
     });
 
     it('should connect', done => {
-      pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        disableTls: true,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
+      pt = getTransport({ disableTls: true });
 
       pt.connection.on('error', err => {
         expect(err).not.toBeDefined();
@@ -261,13 +257,7 @@ describe('winston-papertrail-transport', () => {
     });
 
     it('should send message', done => {
-      pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        disableTls: true,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
+      pt = getTransport({ disableTls: true });
 
       pt.connection.on('error', err => {
         expect(err).not.toBeDefined();
@@ -292,12 +282,7 @@ describe('winston-papertrail-transport', () => {
 
     // TODO now it just hangs
     it.skip('should fail to connect via tls', function(done) {
-      pt = new PapertrailTransport({
-        host: 'localhost',
-        port: 23456,
-        attemptsBeforeDecay: 0,
-        connectionDelay: 10000,
-      });
+      pt = getTransport();
 
       pt.connection.on('error', err => {
         expect(err).toBeDefined();
@@ -306,3 +291,13 @@ describe('winston-papertrail-transport', () => {
     });
   });
 });
+
+function getTransport(additionalOptions?: any) {
+  return new PapertrailTransport({
+    host: 'localhost',
+    port: 23456,
+    attemptsBeforeDecay: 0,
+    connectionDelay: 10000,
+    ...additionalOptions,
+  });
+}
